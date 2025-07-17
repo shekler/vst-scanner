@@ -9,6 +9,7 @@
 #include "vst3sdk/public.sdk/source/vst/utility/stringconvert.h"
 #include "vst3sdk/pluginterfaces/base/fplatform.h"
 #include "vst3sdk/pluginterfaces/vst/vsttypes.h"
+#include "vst3sdk/pluginterfaces/vst/ivstaudioprocessor.h"
 #include <iostream>
 #include <fstream>
 #include <filesystem>
