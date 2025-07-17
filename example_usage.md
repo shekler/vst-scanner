@@ -83,7 +83,43 @@ scan_vst.bat C:\path\to\vst\plugins my_plugins.json
 
 ## Advanced Usage
 
-### 1. Clean Build and Scan
+### 1. Cumulative Scanning
+
+The VST scanner supports cumulative scanning, which allows you to build a comprehensive database of plugins across multiple scans:
+
+```bash
+# First scan - creates new cumulative file
+./scan_vst.sh /path/to/vst/plugins -c cumulative_plugins.json
+
+# Second scan - adds new plugins to existing file
+./scan_vst.sh /path/to/other/plugins -c cumulative_plugins.json
+
+# Third scan - continues building the cumulative database
+./scan_vst.sh /path/to/more/plugins -c cumulative_plugins.json
+```
+
+**PowerShell equivalent:**
+```powershell
+# First scan
+.\scan_vst.ps1 C:\path\to\vst\plugins -CumulativeFile cumulative_plugins.json
+.\scan_vst.ps1 C:\path\to\vst\plugins -c cumulative_plugins.json
+
+# Second scan
+.\scan_vst.ps1 C:\path\to\other\plugins -CumulativeFile cumulative_plugins.json
+.\scan_vst.ps1 C:\path\to\other\plugins -c cumulative_plugins.json
+
+# Third scan
+.\scan_vst.ps1 C:\path\to\more\plugins -CumulativeFile cumulative_plugins.json
+.\scan_vst.ps1 C:\path\to\more\plugins -c cumulative_plugins.json
+```
+
+**Benefits:**
+- Build a complete plugin database over time
+- Avoid re-scanning the same plugins
+- Merge results from multiple directories
+- Maintain a single source of truth for all your plugins
+
+### 2. Clean Build and Scan
 
 ```bash
 # Linux/macOS
@@ -131,7 +167,35 @@ for dir in "${directories[@]}"; do
 done
 ```
 
-### 4. PowerShell Batch Processing
+### 4. Cumulative Batch Processing
+
+```bash
+#!/bin/bash
+# scan_cumulative.sh - Build comprehensive plugin database
+
+directories=(
+    "/Library/Audio/Plug-Ins/VST3"
+    "~/Library/Audio/Plug-Ins/VST3"
+    "/usr/local/lib/vst3"
+    "/Applications/Logic Pro X.app/Contents/PlugIns"
+)
+
+cumulative_file="all_plugins.json"
+
+for dir in "${directories[@]}"; do
+    if [ -d "$dir" ]; then
+        echo "Scanning: $dir"
+        ./scan_vst.sh "$dir" -c "$cumulative_file"
+    else
+        echo "Directory not found: $dir"
+    fi
+done
+
+echo "Cumulative scan complete. Total plugins in database:"
+jq '.totalPlugins' "$cumulative_file"
+```
+
+### 5. PowerShell Batch Processing
 
 ```powershell
 # scan_multiple.ps1
@@ -146,11 +210,39 @@ foreach ($dir in $directories) {
     if (Test-Path $dir -PathType Container) {
         Write-Host "Scanning: $dir"
         $outputFile = "scan_$(Split-Path $dir -Leaf).json"
-        .\scan_vst.ps1 $dir $outputFile
+        .\scan_vst.ps1 $dir -OutputFile $outputFile
     } else {
         Write-Host "Directory not found: $dir"
     }
 }
+```
+
+### 6. PowerShell Cumulative Batch Processing
+
+```powershell
+# scan_cumulative.ps1 - Build comprehensive plugin database
+
+$directories = @(
+    "C:\Program Files\Common Files\VST3",
+    "$env:USERPROFILE\AppData\Local\Programs\Common Files\VST3",
+    "C:\Program Files\VSTPlugins",
+    "C:\Program Files (x86)\Steinberg\VSTPlugins"
+)
+
+$cumulativeFile = "all_plugins.json"
+
+foreach ($dir in $directories) {
+    if (Test-Path $dir -PathType Container) {
+        Write-Host "Scanning: $dir"
+        .\scan_vst.ps1 $dir -CumulativeFile $cumulativeFile
+    } else {
+        Write-Host "Directory not found: $dir"
+    }
+}
+
+Write-Host "Cumulative scan complete. Total plugins in database:"
+$data = Get-Content $cumulativeFile | ConvertFrom-Json
+Write-Host $data.totalPlugins
 ```
 
 ## Processing the JSON Output

@@ -5,8 +5,13 @@ param(
     [Parameter(Mandatory=$true, Position=0)]
     [string]$Directory,
     
-    [Parameter(Mandatory=$false, Position=1)]
+    [Parameter(Mandatory=$false)]
+    [Alias("o")]
     [string]$OutputFile,
+    
+    [Parameter(Mandatory=$false)]
+    [Alias("c")]
+    [string]$CumulativeFile,
     
     [switch]$BuildOnly,
     [switch]$Clean,
@@ -17,20 +22,26 @@ param(
 function Show-Usage {
     Write-Host "VST Scanner - Scan for VST plugins and output to JSON" -ForegroundColor Cyan
     Write-Host ""
-    Write-Host "Usage: .\scan_vst.ps1 <directory_path> [output_file.json] [options]" -ForegroundColor White
+    Write-Host "Usage: .\scan_vst.ps1 <directory_path> [options]" -ForegroundColor White
     Write-Host ""
     Write-Host "Arguments:" -ForegroundColor Yellow
     Write-Host "  directory_path    Path to scan for VST plugins" -ForegroundColor White
-    Write-Host "  output_file.json  Optional output file (default: vst_scan_$(Get-Date -Format 'yyyyMMdd_HHmmss').json)" -ForegroundColor White
     Write-Host ""
     Write-Host "Options:" -ForegroundColor Yellow
-    Write-Host "  -BuildOnly        Only build the scanner, don't run it" -ForegroundColor White
-    Write-Host "  -Clean            Clean build directory before building" -ForegroundColor White
-    Write-Host "  -Help             Show this help message" -ForegroundColor White
+    Write-Host "  -OutputFile <file.json>     Output to specific file" -ForegroundColor White
+    Write-Host "  -o <file.json>              Short form for OutputFile" -ForegroundColor White
+    Write-Host "  -CumulativeFile <file.json> Append to existing cumulative file" -ForegroundColor White
+    Write-Host "  -c <file.json>              Short form for CumulativeFile" -ForegroundColor White
+    Write-Host "  -BuildOnly                  Only build the scanner, don't run it" -ForegroundColor White
+    Write-Host "  -Clean                      Clean build directory before building" -ForegroundColor White
+    Write-Host "  -Help                       Show this help message" -ForegroundColor White
     Write-Host ""
     Write-Host "Examples:" -ForegroundColor Yellow
     Write-Host "  .\scan_vst.ps1 C:\path\to\vst\plugins" -ForegroundColor White
-    Write-Host "  .\scan_vst.ps1 C:\path\to\vst\plugins my_plugins.json" -ForegroundColor White
+    Write-Host "  .\scan_vst.ps1 C:\path\to\vst\plugins -OutputFile my_plugins.json" -ForegroundColor White
+    Write-Host "  .\scan_vst.ps1 C:\path\to\vst\plugins -o my_plugins.json" -ForegroundColor White
+    Write-Host "  .\scan_vst.ps1 C:\path\to\vst\plugins -CumulativeFile cumulative_plugins.json" -ForegroundColor White
+    Write-Host "  .\scan_vst.ps1 C:\path\to\vst\plugins -c cumulative_plugins.json" -ForegroundColor White
     Write-Host "  .\scan_vst.ps1 C:\path\to\vst\plugins -Clean" -ForegroundColor White
 }
 
@@ -68,14 +79,14 @@ if (-not $Directory) {
     exit 1
 }
 
-# Check if directory exists
-if (-not (Test-Path $Directory -PathType Container)) {
-    Write-Error "Directory does not exist: $Directory"
+# Check if both OutputFile and CumulativeFile are used
+if ($OutputFile -and $CumulativeFile) {
+    Write-Error "Cannot use both -OutputFile and -CumulativeFile options"
     exit 1
 }
 
-# Set default output file if not provided
-if (-not $OutputFile) {
+# Set default output file if not provided and not using cumulative
+if (-not $OutputFile -and -not $CumulativeFile) {
     $OutputFile = "vst_scan_$(Get-Date -Format 'yyyyMMdd_HHmmss').json"
 }
 
@@ -85,7 +96,11 @@ $BuildDir = Join-Path $ScriptDir "build"
 
 Write-Status "VST Scanner starting..."
 Write-Status "Directory to scan: $Directory"
-Write-Status "Output file: $OutputFile"
+if ($CumulativeFile) {
+    Write-Status "Cumulative file: $CumulativeFile"
+} else {
+    Write-Status "Output file: $OutputFile"
+}
 Write-Status "Build directory: $BuildDir"
 
 # Create build directory
@@ -195,6 +210,16 @@ if ($BuildOnly) {
 
 # Run the scanner
 Write-Status "Running VST scanner..."
+$scannerArgs = @($Directory)
+
+if ($CumulativeFile) {
+    $scannerArgs += @("-c", $CumulativeFile)
+    Write-Status "Using cumulative mode with file: $CumulativeFile"
+} elseif ($OutputFile) {
+    $scannerArgs += @("-o", $OutputFile)
+    Write-Status "Output will be saved to: $OutputFile"
+}
+
 $scannerExe = $null
 
 # Look for the executable in different possible locations
@@ -218,10 +243,16 @@ if (-not $scannerExe) {
     exit 1
 }
 
-$scannerResult = & $scannerExe "$Directory" "$OutputFile" 2>&1
+$scannerResult = & $scannerExe @scannerArgs 2>&1
 if ($LASTEXITCODE -eq 0) {
     Write-Success "VST scan completed successfully!"
-    Write-Status "Results saved to: $OutputFile"
+    
+    if ($CumulativeFile) {
+        Write-Status "Results appended to: $CumulativeFile"
+        $OutputFile = $CumulativeFile
+    } else {
+        Write-Status "Results saved to: $OutputFile"
+    }
     
     # Show summary if the file exists
     if (Test-Path $OutputFile) {

@@ -33,20 +33,22 @@ print_error() {
 show_usage() {
     echo "VST Scanner - Scan for VST plugins and output to JSON"
     echo ""
-    echo "Usage: $0 <directory_path> [output_file.json] [options]"
+    echo "Usage: $0 <directory_path> [options]"
     echo ""
     echo "Arguments:"
     echo "  directory_path    Path to scan for VST plugins"
-    echo "  output_file.json  Optional output file (default: vst_scan_$(date +%Y%m%d_%H%M%S).json)"
     echo ""
     echo "Options:"
-    echo "  --build-only      Only build the scanner, don't run it"
-    echo "  --clean           Clean build directory before building"
-    echo "  --help            Show this help message"
+    echo "  -o <output_file.json>     Output to specific file"
+    echo "  -c <cumulative_file.json> Append to existing cumulative file"
+    echo "  --build-only              Only build the scanner, don't run it"
+    echo "  --clean                   Clean build directory before building"
+    echo "  --help                    Show this help message"
     echo ""
     echo "Examples:"
     echo "  $0 /path/to/vst/plugins"
-    echo "  $0 /path/to/vst/plugins my_plugins.json"
+    echo "  $0 /path/to/vst/plugins -o my_plugins.json"
+    echo "  $0 /path/to/vst/plugins -c cumulative_plugins.json"
     echo "  $0 /path/to/vst/plugins --clean"
 }
 
@@ -55,9 +57,30 @@ BUILD_ONLY=false
 CLEAN_BUILD=false
 DIRECTORY=""
 OUTPUT_FILE=""
+CUMULATIVE_FILE=""
+USE_CUMULATIVE=false
 
 while [[ $# -gt 0 ]]; do
     case $1 in
+        -o)
+            if [[ -n "$2" && "$2" != -* ]]; then
+                OUTPUT_FILE="$2"
+                shift 2
+            else
+                print_error "Option -o requires an argument"
+                exit 1
+            fi
+            ;;
+        -c)
+            if [[ -n "$2" && "$2" != -* ]]; then
+                CUMULATIVE_FILE="$2"
+                USE_CUMULATIVE=true
+                shift 2
+            else
+                print_error "Option -c requires an argument"
+                exit 1
+            fi
+            ;;
         --build-only)
             BUILD_ONLY=true
             shift
@@ -78,8 +101,6 @@ while [[ $# -gt 0 ]]; do
         *)
             if [[ -z "$DIRECTORY" ]]; then
                 DIRECTORY="$1"
-            elif [[ -z "$OUTPUT_FILE" ]]; then
-                OUTPUT_FILE="$1"
             else
                 print_error "Too many arguments"
                 show_usage
@@ -97,14 +118,14 @@ if [[ -z "$DIRECTORY" ]]; then
     exit 1
 fi
 
-# Check if directory exists
-if [[ ! -d "$DIRECTORY" ]]; then
-    print_error "Directory does not exist: $DIRECTORY"
+# Check if both -o and -c are used
+if [[ -n "$OUTPUT_FILE" && "$USE_CUMULATIVE" == true ]]; then
+    print_error "Cannot use both -o and -c options"
     exit 1
 fi
 
-# Set default output file if not provided
-if [[ -z "$OUTPUT_FILE" ]]; then
+# Set default output file if not provided and not using cumulative
+if [[ -z "$OUTPUT_FILE" && "$USE_CUMULATIVE" == false ]]; then
     OUTPUT_FILE="vst_scan_$(date +%Y%m%d_%H%M%S).json"
 fi
 
@@ -182,12 +203,22 @@ fi
 
 # Run the scanner
 print_status "Running VST scanner..."
+SCANNER_ARGS=("$DIRECTORY")
+
+if [[ "$USE_CUMULATIVE" == true ]]; then
+    SCANNER_ARGS+=("-c" "$CUMULATIVE_FILE")
+    print_status "Using cumulative mode with file: $CUMULATIVE_FILE"
+elif [[ -n "$OUTPUT_FILE" ]]; then
+    SCANNER_ARGS+=("-o" "$OUTPUT_FILE")
+    print_status "Output will be saved to: $OUTPUT_FILE"
+fi
+
 if [[ -f "bin/vst_scanner" ]]; then
-    ./bin/vst_scanner "$DIRECTORY" "$OUTPUT_FILE"
+    ./bin/vst_scanner "${SCANNER_ARGS[@]}"
 elif [[ -f "bin/Release/vst_scanner.exe" ]]; then
-    ./bin/Release/vst_scanner.exe "$DIRECTORY" "$OUTPUT_FILE"
+    ./bin/Release/vst_scanner.exe "${SCANNER_ARGS[@]}"
 elif [[ -f "bin/vst_scanner.exe" ]]; then
-    ./bin/vst_scanner.exe "$DIRECTORY" "$OUTPUT_FILE"
+    ./bin/vst_scanner.exe "${SCANNER_ARGS[@]}"
 else
     print_error "Could not find vst_scanner executable"
     print_status "Looking for executable in build directory..."
@@ -197,7 +228,13 @@ fi
 
 if [[ $? -eq 0 ]]; then
     print_success "VST scan completed successfully!"
-    print_status "Results saved to: $OUTPUT_FILE"
+    
+    if [[ "$USE_CUMULATIVE" == true ]]; then
+        print_status "Results appended to: $CUMULATIVE_FILE"
+        OUTPUT_FILE="$CUMULATIVE_FILE"
+    else
+        print_status "Results saved to: $OUTPUT_FILE"
+    fi
     
     # Show summary if jq is available
     if command -v jq &> /dev/null; then

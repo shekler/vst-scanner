@@ -64,7 +64,12 @@ chmod +x scan_vst.sh
 .\scan_vst.ps1 C:\path\to\vst\plugins
 
 # Scan and save to specific file
-.\scan_vst.ps1 C:\path\to\vst\plugins my_plugins.json
+.\scan_vst.ps1 C:\path\to\vst\plugins -OutputFile my_plugins.json
+.\scan_vst.ps1 C:\path\to\vst\plugins -o my_plugins.json
+
+# Scan and append to cumulative file
+.\scan_vst.ps1 C:\path\to\vst\plugins -CumulativeFile cumulative_plugins.json
+.\scan_vst.ps1 C:\path\to\vst\plugins -c cumulative_plugins.json
 
 # Clean build and scan
 .\scan_vst.ps1 C:\path\to\vst\plugins -Clean
@@ -131,6 +136,13 @@ The scanner outputs a JSON file with the following structure:
 
 ## Command Line Options
 
+The VST scanner supports the following command-line options:
+
+### Basic Options
+- `-o <output_file.json>`: Output results to a specific file (default: stdout)
+- `-c <cumulative_file.json>`: Append to existing cumulative file
+- `-h, --help`: Show help message
+
 ### Shell Script Options
 
 - `--build-only`: Only build the scanner, don't run it
@@ -145,28 +157,70 @@ The scanner outputs a JSON file with the following structure:
 
 ## Examples
 
+### Basic Scanning
+
+```bash
+# Scan and output to console
+./vst_scanner /path/to/vst/plugins
+
+# Scan and save to file
+./vst_scanner /path/to/vst/plugins -o my_plugins.json
+```
+
+### Cumulative Scanning
+
+The scanner supports cumulative scanning, which allows you to build up a comprehensive database of plugins across multiple scans:
+
+```bash
+# First scan - creates new cumulative file
+./vst_scanner /path/to/vst/plugins -c cumulative_plugins.json
+
+# Second scan - adds new plugins to existing file
+./vst_scanner /path/to/other/plugins -c cumulative_plugins.json
+
+# Third scan - continues building the cumulative database
+./vst_scanner /path/to/more/plugins -c cumulative_plugins.json
+```
+
+**Benefits of cumulative scanning:**
+- Build a complete plugin database over time
+- Avoid re-scanning the same plugins
+- Merge results from multiple directories
+- Maintain a single source of truth for all your plugins
+
+**How it works:**
+- The scanner reads existing plugins from the cumulative file
+- New plugins are added only if they don't already exist (based on file path)
+- The final output contains all plugins from previous scans plus new ones
+- Duplicate plugins are automatically filtered out
+
 ### Scan Common VST Directories
 
 ```bash
 # Windows
-./scan_vst.sh "C:\Program Files\Common Files\VST3" windows_vst3.json
-./scan_vst.sh "C:\Program Files\VSTPlugins" windows_vst2.json
+./vst_scanner "C:\Program Files\Common Files\VST3" -o windows_vst3.json
+./vst_scanner "C:\Program Files\VSTPlugins" -o windows_vst2.json
 
 # macOS
-./scan_vst.sh "/Library/Audio/Plug-Ins/VST3" mac_vst3.json
-./scan_vst.sh "~/Library/Audio/Plug-Ins/VST3" mac_user_vst3.json
+./vst_scanner "/Library/Audio/Plug-Ins/VST3" -o mac_vst3.json
+./vst_scanner "~/Library/Audio/Plug-Ins/VST3" -o mac_user_vst3.json
 
 # Linux
-./scan_vst.sh "/usr/local/lib/vst3" linux_vst3.json
-./scan_vst.sh "~/.vst3" linux_user_vst3.json
+./vst_scanner "/usr/local/lib/vst3" -o linux_vst3.json
+./vst_scanner "~/.vst3" -o linux_user_vst3.json
 ```
 
-### Batch Processing
+### Batch Processing with Cumulative Scanning
 
 ```bash
-# Scan multiple directories
+# Create a cumulative database from multiple directories
+./vst_scanner "/path/to/dir1" -c all_plugins.json
+./vst_scanner "/path/to/dir2" -c all_plugins.json
+./vst_scanner "/path/to/dir3" -c all_plugins.json
+
+# Or use a loop for multiple directories
 for dir in /path/to/dir1 /path/to/dir2 /path/to/dir3; do
-    ./scan_vst.sh "$dir" "scan_$(basename $dir).json"
+    ./vst_scanner "$dir" -c all_plugins.json
 done
 ```
 

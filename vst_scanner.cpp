@@ -17,6 +17,8 @@
 #include <string>
 #include <memory>
 #include <chrono>
+#include <algorithm>
+#include <sstream>
 
 //------------------------------------------------------------------------
 namespace VSTScanner {
@@ -180,41 +182,301 @@ void outputJSON(const std::vector<PluginInfo>& plugins, std::ostream& out) {
 } // namespace VSTScanner
 
 //------------------------------------------------------------------------
+namespace VSTScanner {
+
+//------------------------------------------------------------------------
+// Simple JSON parsing for reading existing scan files
+std::vector<PluginInfo> parseExistingJSON(const std::string& filename) {
+    std::vector<PluginInfo> existingPlugins;
+    std::ifstream file(filename);
+    
+    if (!file.is_open()) {
+        return existingPlugins;
+    }
+    
+    std::string line;
+    bool inPluginsArray = false;
+    bool inPluginObject = false;
+    PluginInfo currentPlugin;
+    std::string currentField;
+    
+    while (std::getline(file, line)) {
+        // Skip empty lines and comments
+        if (line.empty() || line.find("//") == 0) continue;
+        
+        // Check if we're entering the plugins array
+        if (line.find("\"plugins\"") != std::string::npos && line.find("[") != std::string::npos) {
+            inPluginsArray = true;
+            continue;
+        }
+        
+        // Check if we're leaving the plugins array
+        if (inPluginsArray && line.find("]") != std::string::npos) {
+            inPluginsArray = false;
+            break;
+        }
+        
+        if (!inPluginsArray) continue;
+        
+        // Check if we're entering a plugin object
+        if (line.find("{") != std::string::npos && inPluginsArray) {
+            inPluginObject = true;
+            currentPlugin = PluginInfo();
+            continue;
+        }
+        
+        // Check if we're leaving a plugin object
+        if (line.find("}") != std::string::npos && inPluginObject) {
+            inPluginObject = false;
+            existingPlugins.push_back(currentPlugin);
+            continue;
+        }
+        
+        if (!inPluginObject) continue;
+        
+        // Parse plugin fields
+        std::string trimmed = line;
+        trimmed.erase(0, trimmed.find_first_not_of(" \t"));
+        trimmed.erase(trimmed.find_last_not_of(" \t,") + 1);
+        
+        if (trimmed.find("\"path\"") == 0) {
+            size_t start = trimmed.find("\"") + 1;
+            size_t end = trimmed.find_last_of("\"");
+            if (start < end) {
+                currentPlugin.path = trimmed.substr(start, end - start);
+            }
+        } else if (trimmed.find("\"isValid\"") == 0) {
+            currentPlugin.isValid = (trimmed.find("true") != std::string::npos);
+        } else if (trimmed.find("\"name\"") == 0) {
+            size_t start = trimmed.find("\"") + 1;
+            size_t end = trimmed.find_last_of("\"");
+            if (start < end) {
+                currentPlugin.name = trimmed.substr(start, end - start);
+            }
+        } else if (trimmed.find("\"vendor\"") == 0) {
+            size_t start = trimmed.find("\"") + 1;
+            size_t end = trimmed.find_last_of("\"");
+            if (start < end) {
+                currentPlugin.vendor = trimmed.substr(start, end - start);
+            }
+        } else if (trimmed.find("\"version\"") == 0) {
+            size_t start = trimmed.find("\"") + 1;
+            size_t end = trimmed.find_last_of("\"");
+            if (start < end) {
+                currentPlugin.version = trimmed.substr(start, end - start);
+            }
+        } else if (trimmed.find("\"category\"") == 0) {
+            size_t start = trimmed.find("\"") + 1;
+            size_t end = trimmed.find_last_of("\"");
+            if (start < end) {
+                currentPlugin.category = trimmed.substr(start, end - start);
+            }
+        } else if (trimmed.find("\"cid\"") == 0) {
+            size_t start = trimmed.find("\"") + 1;
+            size_t end = trimmed.find_last_of("\"");
+            if (start < end) {
+                currentPlugin.cid = trimmed.substr(start, end - start);
+            }
+        } else if (trimmed.find("\"sdkVersion\"") == 0) {
+            size_t start = trimmed.find("\"") + 1;
+            size_t end = trimmed.find_last_of("\"");
+            if (start < end) {
+                currentPlugin.sdkVersion = trimmed.substr(start, end - start);
+            }
+        } else if (trimmed.find("\"cardinality\"") == 0) {
+            size_t start = trimmed.find(":") + 1;
+            currentPlugin.cardinality = std::stoi(trimmed.substr(start));
+        } else if (trimmed.find("\"flags\"") == 0) {
+            size_t start = trimmed.find(":") + 1;
+            currentPlugin.flags = std::stoul(trimmed.substr(start));
+        } else if (trimmed.find("\"error\"") == 0) {
+            size_t start = trimmed.find("\"") + 1;
+            size_t end = trimmed.find_last_of("\"");
+            if (start < end) {
+                currentPlugin.errorMessage = trimmed.substr(start, end - start);
+            }
+        }
+    }
+    
+    return existingPlugins;
+}
+
+//------------------------------------------------------------------------
+// Merge new plugins with existing ones, avoiding duplicates by path
+std::vector<PluginInfo> mergePlugins(const std::vector<PluginInfo>& existing, const std::vector<PluginInfo>& newPlugins) {
+    std::vector<PluginInfo> merged = existing;
+    
+    for (const auto& newPlugin : newPlugins) {
+        // Check if plugin already exists by path
+        bool exists = false;
+        for (const auto& existingPlugin : existing) {
+            if (existingPlugin.path == newPlugin.path) {
+                exists = true;
+                break;
+            }
+        }
+        
+        if (!exists) {
+            merged.push_back(newPlugin);
+        }
+    }
+    
+    return merged;
+}
+
+//------------------------------------------------------------------------
+void outputCumulativeJSON(const std::vector<PluginInfo>& plugins, std::ostream& out) {
+    out << "{\n";
+    out << "  \"scanTime\": \"" << std::chrono::system_clock::now().time_since_epoch().count() << "\",\n";
+    out << "  \"totalPlugins\": " << plugins.size() << ",\n";
+    out << "  \"validPlugins\": " << std::count_if(plugins.begin(), plugins.end(), [](const PluginInfo& p) { return p.isValid; }) << ",\n";
+    out << "  \"plugins\": [\n";
+    
+    for (size_t i = 0; i < plugins.size(); ++i) {
+        const auto& plugin = plugins[i];
+        out << "    {\n";
+        out << "      \"path\": \"" << plugin.path << "\",\n";
+        out << "      \"isValid\": " << (plugin.isValid ? "true" : "false") << ",\n";
+        
+        if (plugin.isValid) {
+            out << "      \"name\": \"" << plugin.name << "\",\n";
+            out << "      \"vendor\": \"" << plugin.vendor << "\",\n";
+            out << "      \"version\": \"" << plugin.version << "\",\n";
+            out << "      \"category\": \"" << plugin.category << "\",\n";
+            out << "      \"cid\": \"" << plugin.cid << "\",\n";
+            out << "      \"sdkVersion\": \"" << plugin.sdkVersion << "\",\n";
+            out << "      \"cardinality\": " << plugin.cardinality << ",\n";
+            out << "      \"flags\": " << plugin.flags << ",\n";
+            
+            out << "      \"subCategories\": [";
+            for (size_t j = 0; j < plugin.subCategories.size(); ++j) {
+                if (j > 0) out << ", ";
+                out << "\"" << plugin.subCategories[j] << "\"";
+            }
+            out << "]\n";
+        } else {
+            out << "      \"error\": \"" << plugin.errorMessage << "\"\n";
+        }
+        
+        out << "    }";
+        if (i < plugins.size() - 1) out << ",";
+        out << "\n";
+    }
+    
+    out << "  ]\n";
+    out << "}\n";
+}
+
+//------------------------------------------------------------------------
+} // namespace VSTScanner
+
+//------------------------------------------------------------------------
 int main(int argc, char* argv[]) {
     if (argc < 2) {
-        std::cerr << "Usage: " << argv[0] << " <directory_path> [output_file.json]" << std::endl;
-        std::cerr << "  directory_path: Path to scan for VST plugins" << std::endl;
-        std::cerr << "  output_file.json: Optional output file (default: stdout)" << std::endl;
+        std::cerr << "Usage: " << argv[0] << " <directory_path> [options]" << std::endl;
+        std::cerr << "Options:" << std::endl;
+        std::cerr << "  -o <output_file.json>     Output to file (default: stdout)" << std::endl;
+        std::cerr << "  -c <cumulative_file.json> Append to existing cumulative file" << std::endl;
+        std::cerr << "  -h, --help                Show this help message" << std::endl;
+        std::cerr << std::endl;
+        std::cerr << "Examples:" << std::endl;
+        std::cerr << "  " << argv[0] << " C:\\VSTPlugins" << std::endl;
+        std::cerr << "  " << argv[0] << " C:\\VSTPlugins -o scan_results.json" << std::endl;
+        std::cerr << "  " << argv[0] << " C:\\VSTPlugins -c cumulative_scan.json" << std::endl;
         return 1;
     }
     
-    std::string directory = argv[1];
-    std::string outputFile = (argc > 2) ? argv[2] : "";
+    std::string directory;
+    std::string outputFile;
+    std::string cumulativeFile;
+    bool useCumulative = false;
+    
+    // Parse command line arguments
+    for (int i = 1; i < argc; ++i) {
+        std::string arg = argv[i];
+        
+        if (arg == "-h" || arg == "--help") {
+            std::cerr << "Usage: " << argv[0] << " <directory_path> [options]" << std::endl;
+            std::cerr << "Options:" << std::endl;
+            std::cerr << "  -o <output_file.json>     Output to file (default: stdout)" << std::endl;
+            std::cerr << "  -c <cumulative_file.json> Append to existing cumulative file" << std::endl;
+            std::cerr << "  -h, --help                Show this help message" << std::endl;
+            std::cerr << std::endl;
+            std::cerr << "Examples:" << std::endl;
+            std::cerr << "  " << argv[0] << " C:\\VSTPlugins" << std::endl;
+            std::cerr << "  " << argv[0] << " C:\\VSTPlugins -o scan_results.json" << std::endl;
+            std::cerr << "  " << argv[0] << " C:\\VSTPlugins -c cumulative_scan.json" << std::endl;
+            return 0;
+        } else if (arg == "-o" && i + 1 < argc) {
+            outputFile = argv[++i];
+        } else if (arg == "-c" && i + 1 < argc) {
+            cumulativeFile = argv[++i];
+            useCumulative = true;
+        } else if (directory.empty()) {
+            directory = arg;
+        } else {
+            std::cerr << "Unknown argument: " << arg << std::endl;
+            return 1;
+        }
+    }
+    
+    if (directory.empty()) {
+        std::cerr << "Error: Directory path is required" << std::endl;
+        return 1;
+    }
+    
+    if (useCumulative && !outputFile.empty()) {
+        std::cerr << "Error: Cannot use both -o and -c options" << std::endl;
+        return 1;
+    }
     
     std::cout << "Scanning directory: " << directory << std::endl;
+    
+    // Load existing plugins if using cumulative mode
+    std::vector<VSTScanner::PluginInfo> existingPlugins;
+    if (useCumulative && !cumulativeFile.empty()) {
+        std::cout << "Loading existing plugins from: " << cumulativeFile << std::endl;
+        existingPlugins = VSTScanner::parseExistingJSON(cumulativeFile);
+        std::cout << "Found " << existingPlugins.size() << " existing plugins" << std::endl;
+    }
     
     // Find VST files
     auto vstFiles = VSTScanner::findVSTFiles(directory);
     std::cout << "Found " << vstFiles.size() << " VST files" << std::endl;
     
     // Scan each plugin
-    std::vector<VSTScanner::PluginInfo> plugins;
+    std::vector<VSTScanner::PluginInfo> newPlugins;
     for (const auto& file : vstFiles) {
         std::cout << "Scanning: " << file << std::endl;
         auto pluginInfo = VSTScanner::scanPlugin(file);
-        plugins.push_back(pluginInfo);
+        newPlugins.push_back(pluginInfo);
+    }
+    
+    // Merge plugins if using cumulative mode
+    std::vector<VSTScanner::PluginInfo> finalPlugins;
+    if (useCumulative) {
+        finalPlugins = VSTScanner::mergePlugins(existingPlugins, newPlugins);
+        std::cout << "Merged " << newPlugins.size() << " new plugins with " << existingPlugins.size() 
+                  << " existing plugins. Total: " << finalPlugins.size() << std::endl;
+    } else {
+        finalPlugins = newPlugins;
     }
     
     // Output results
-    if (outputFile.empty()) {
-        VSTScanner::outputJSON(plugins, std::cout);
+    if (outputFile.empty() && cumulativeFile.empty()) {
+        VSTScanner::outputJSON(finalPlugins, std::cout);
     } else {
-        std::ofstream outFile(outputFile);
+        std::string outputFileName = useCumulative ? cumulativeFile : outputFile;
+        std::ofstream outFile(outputFileName);
         if (outFile.is_open()) {
-            VSTScanner::outputJSON(plugins, outFile);
-            std::cout << "Results written to: " << outputFile << std::endl;
+            if (useCumulative) {
+                VSTScanner::outputCumulativeJSON(finalPlugins, outFile);
+            } else {
+                VSTScanner::outputJSON(finalPlugins, outFile);
+            }
+            std::cout << "Results written to: " << outputFileName << std::endl;
         } else {
-            std::cerr << "Error: Could not open output file: " << outputFile << std::endl;
+            std::cerr << "Error: Could not open output file: " << outputFileName << std::endl;
             return 1;
         }
     }
