@@ -51,6 +51,10 @@ chmod +x scan_vst.sh
 
 # Clean build and scan
 ./scan_vst.sh /path/to/vst/plugins --clean
+
+# Handle paths with spaces (always use quotes)
+./scan_vst.sh "/path/with spaces/vst plugins"
+./scan_vst.sh "/Users/My User/Music/VST Plugins"
 ```
 
 ### Using PowerShell (Windows)
@@ -64,6 +68,10 @@ chmod +x scan_vst.sh
 
 # Clean build and scan
 .\scan_vst.ps1 C:\path\to\vst\plugins -Clean
+
+# Handle paths with spaces (always use quotes)
+.\scan_vst.ps1 "C:\My Music\VST Plugins"
+.\scan_vst.ps1 "C:\Program Files (x86)\Steinberg\VSTPlugins"
 ```
 
 ### Manual Build and Run

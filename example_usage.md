@@ -42,6 +42,10 @@ scan_vst.bat C:\path\to\vst\plugins my_plugins.json
 
 # Legacy VST2 plugins
 ./scan_vst.sh "C:\Program Files\VSTPlugins"
+
+# Paths with spaces (always use quotes)
+./scan_vst.sh "C:\My Music\VST Plugins"
+./scan_vst.sh "C:\Program Files (x86)\Steinberg\VSTPlugins"
 ```
 
 ### macOS
@@ -54,6 +58,10 @@ scan_vst.bat C:\path\to\vst\plugins my_plugins.json
 
 # System VST2 plugins
 ./scan_vst.sh "/Library/Audio/Plug-Ins/VST"
+
+# Paths with spaces (always use quotes)
+./scan_vst.sh "/Users/My User/Music/VST Plugins"
+./scan_vst.sh "/Applications/Logic Pro X.app/Contents/PlugIns"
 ```
 
 ### Linux
@@ -67,6 +75,10 @@ scan_vst.bat C:\path\to\vst\plugins my_plugins.json
 # Alternative locations
 ./scan_vst.sh "/opt/vst3"
 ./scan_vst.sh "/usr/lib/vst3"
+
+# Paths with spaces (always use quotes)
+./scan_vst.sh "/home/my user/Music/VST Plugins"
+./scan_vst.sh "/opt/My Music/VST3"
 ```
 
 ## Advanced Usage

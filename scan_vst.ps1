@@ -195,7 +195,7 @@ if (-not $scannerExe) {
     exit 1
 }
 
-$scannerResult = & $scannerExe $Directory $OutputFile 2>&1
+$scannerResult = & $scannerExe "$Directory" "$OutputFile" 2>&1
 if ($LASTEXITCODE -eq 0) {
     Write-Success "VST scan completed successfully!"
     Write-Status "Results saved to: $OutputFile"
