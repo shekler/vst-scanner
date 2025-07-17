@@ -136,6 +136,27 @@ PluginInfo scanPlugin(const std::string& pluginPath) {
 }
 
 //------------------------------------------------------------------------
+std::string escapeJSONString(const std::string& input) {
+    std::string result;
+    result.reserve(input.length());
+    
+    for (char c : input) {
+        switch (c) {
+            case '\\': result += "\\\\"; break;
+            case '\"': result += "\\\""; break;
+            case '\b': result += "\\b"; break;
+            case '\f': result += "\\f"; break;
+            case '\n': result += "\\n"; break;
+            case '\r': result += "\\r"; break;
+            case '\t': result += "\\t"; break;
+            default: result += c; break;
+        }
+    }
+    
+    return result;
+}
+
+//------------------------------------------------------------------------
 void outputJSON(const std::vector<PluginInfo>& plugins, std::ostream& out) {
     out << "{\n";
     out << "  \"scanTime\": \"" << std::chrono::system_clock::now().time_since_epoch().count() << "\",\n";
@@ -146,27 +167,27 @@ void outputJSON(const std::vector<PluginInfo>& plugins, std::ostream& out) {
     for (size_t i = 0; i < plugins.size(); ++i) {
         const auto& plugin = plugins[i];
         out << "    {\n";
-        out << "      \"path\": \"" << plugin.path << "\",\n";
+        out << "      \"path\": \"" << escapeJSONString(plugin.path) << "\",\n";
         out << "      \"isValid\": " << (plugin.isValid ? "true" : "false") << ",\n";
         
         if (plugin.isValid) {
-            out << "      \"name\": \"" << plugin.name << "\",\n";
-            out << "      \"vendor\": \"" << plugin.vendor << "\",\n";
-            out << "      \"version\": \"" << plugin.version << "\",\n";
-            out << "      \"category\": \"" << plugin.category << "\",\n";
-            out << "      \"cid\": \"" << plugin.cid << "\",\n";
-            out << "      \"sdkVersion\": \"" << plugin.sdkVersion << "\",\n";
+            out << "      \"name\": \"" << escapeJSONString(plugin.name) << "\",\n";
+            out << "      \"vendor\": \"" << escapeJSONString(plugin.vendor) << "\",\n";
+            out << "      \"version\": \"" << escapeJSONString(plugin.version) << "\",\n";
+            out << "      \"category\": \"" << escapeJSONString(plugin.category) << "\",\n";
+            out << "      \"cid\": \"" << escapeJSONString(plugin.cid) << "\",\n";
+            out << "      \"sdkVersion\": \"" << escapeJSONString(plugin.sdkVersion) << "\",\n";
             out << "      \"cardinality\": " << plugin.cardinality << ",\n";
             out << "      \"flags\": " << plugin.flags << ",\n";
             
             out << "      \"subCategories\": [";
             for (size_t j = 0; j < plugin.subCategories.size(); ++j) {
                 if (j > 0) out << ", ";
-                out << "\"" << plugin.subCategories[j] << "\"";
+                out << "\"" << escapeJSONString(plugin.subCategories[j]) << "\"";
             }
             out << "]\n";
         } else {
-            out << "      \"error\": \"" << plugin.errorMessage << "\"\n";
+            out << "      \"error\": \"" << escapeJSONString(plugin.errorMessage) << "\"\n";
         }
         
         out << "    }";
@@ -335,27 +356,27 @@ void outputCumulativeJSON(const std::vector<PluginInfo>& plugins, std::ostream& 
     for (size_t i = 0; i < plugins.size(); ++i) {
         const auto& plugin = plugins[i];
         out << "    {\n";
-        out << "      \"path\": \"" << plugin.path << "\",\n";
+        out << "      \"path\": \"" << escapeJSONString(plugin.path) << "\",\n";
         out << "      \"isValid\": " << (plugin.isValid ? "true" : "false") << ",\n";
         
         if (plugin.isValid) {
-            out << "      \"name\": \"" << plugin.name << "\",\n";
-            out << "      \"vendor\": \"" << plugin.vendor << "\",\n";
-            out << "      \"version\": \"" << plugin.version << "\",\n";
-            out << "      \"category\": \"" << plugin.category << "\",\n";
-            out << "      \"cid\": \"" << plugin.cid << "\",\n";
-            out << "      \"sdkVersion\": \"" << plugin.sdkVersion << "\",\n";
+            out << "      \"name\": \"" << escapeJSONString(plugin.name) << "\",\n";
+            out << "      \"vendor\": \"" << escapeJSONString(plugin.vendor) << "\",\n";
+            out << "      \"version\": \"" << escapeJSONString(plugin.version) << "\",\n";
+            out << "      \"category\": \"" << escapeJSONString(plugin.category) << "\",\n";
+            out << "      \"cid\": \"" << escapeJSONString(plugin.cid) << "\",\n";
+            out << "      \"sdkVersion\": \"" << escapeJSONString(plugin.sdkVersion) << "\",\n";
             out << "      \"cardinality\": " << plugin.cardinality << ",\n";
             out << "      \"flags\": " << plugin.flags << ",\n";
             
             out << "      \"subCategories\": [";
             for (size_t j = 0; j < plugin.subCategories.size(); ++j) {
                 if (j > 0) out << ", ";
-                out << "\"" << plugin.subCategories[j] << "\"";
+                out << "\"" << escapeJSONString(plugin.subCategories[j]) << "\"";
             }
             out << "]\n";
         } else {
-            out << "      \"error\": \"" << plugin.errorMessage << "\"\n";
+            out << "      \"error\": \"" << escapeJSONString(plugin.errorMessage) << "\"\n";
         }
         
         out << "    }";
