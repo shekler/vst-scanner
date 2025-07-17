@@ -102,6 +102,20 @@ if (-not (Test-Path $BuildDir)) {
 
 Set-Location $BuildDir
 
+# Check for CMake cache conflicts and clean if necessary
+$cmakeCachePath = Join-Path $BuildDir "CMakeCache.txt"
+if (Test-Path $cmakeCachePath) {
+    Write-Status "Checking CMake cache for generator conflicts..."
+    # Look for any indication of Unix Makefiles in the cache
+    $cacheContent = Get-Content $cmakeCachePath -Raw
+    if ($cacheContent -match "Unix Makefiles" -and $cmakeGenerator -like "*Visual Studio*") {
+        Write-Warning "Detected Unix Makefiles configuration. Cleaning build directory for Visual Studio..."
+        Remove-Item $BuildDir -Recurse -Force
+        New-Item -ItemType Directory -Path $BuildDir | Out-Null
+        Set-Location $BuildDir
+    }
+}
+
 # Check if CMake is available
 try {
     $cmakeVersion = cmake --version 2>$null
@@ -147,6 +161,15 @@ $cmakeResult = & cmake @cmakeArgs 2>&1
 if ($LASTEXITCODE -ne 0) {
     Write-Error "CMake configuration failed"
     Write-Host $cmakeResult -ForegroundColor Red
+    
+    # Check if it's a generator mismatch error
+    if ($cmakeResult -match "generator.*Does not match the generator used previously") {
+        Write-Host ""
+        Write-Host "This error occurs when the build directory contains a previous CMake configuration" -ForegroundColor Yellow
+        Write-Host "with a different generator. To fix this, run the script with the -Clean flag:" -ForegroundColor Yellow
+        Write-Host "  .\scan_vst.ps1 `"$Directory`" -Clean" -ForegroundColor Cyan
+    }
+    
     exit 1
 }
 
