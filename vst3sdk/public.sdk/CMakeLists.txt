@@ -191,24 +191,6 @@ if(VST_SDK)
             source/vst/utility/versionparser.h
             source/vst/vstinitiids.cpp
     )
-    
-    # Add platform-specific module files
-    if(SMTG_OS_WINDOWS)
-        target_sources(sdk_hosting 
-            PRIVATE
-                source/vst/hosting/module_win32.cpp
-        )
-    elseif(SMTG_OS_LINUX)
-        target_sources(sdk_hosting 
-            PRIVATE
-                source/vst/hosting/module_linux.cpp
-        )
-    elseif(SMTG_OS_MACOS)
-        target_sources(sdk_hosting 
-            PRIVATE
-                source/vst/hosting/module_mac.mm
-        )
-    endif()
     # add dependencies
     target_link_libraries(sdk_hosting 
         PUBLIC 
