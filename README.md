@@ -14,9 +14,9 @@ A C++ application that uses the official VST3 SDK to scan directories for VST pl
 
 The VST scanner extracts the following information from each VST plugin:
 
-- **Basic info**: Name, vendor, version, category
+- **Basic info**: Name, vendor, version
 - **Technical details**: Class ID (CID), SDK version, cardinality, flags
-- **Categories**: Main category and subcategories
+- **Categories**: Plugin categories (e.g. Fx, EQ, Instrument)
 - **Validation**: Whether the plugin is valid and any error messages
 - **File path**: Full path to the plugin file
 
@@ -177,12 +177,11 @@ The scanner outputs a JSON file with the following structure:
       "name": "My Plugin",
       "vendor": "My Company",
       "version": "1.0.0",
-      "category": "Fx",
       "cid": "12345678-1234-1234-1234-123456789012",
       "sdkVersion": "VST 3.7.0",
       "cardinality": 1,
       "flags": 0,
-      "subCategories": ["Fx", "Distortion"]
+      "categories": ["Fx", "Distortion"]
     },
     {
       "path": "/path/to/invalid.vst3",

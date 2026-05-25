@@ -36,8 +36,7 @@ struct PluginInfo {
     std::string name;
     std::string vendor;
     std::string version;
-    std::string category;
-    std::vector<std::string> subCategories;
+    std::vector<std::string> categories;
     std::string cid;
     std::string sdkVersion;
     int32_t cardinality {0};
@@ -506,8 +505,7 @@ void fillPluginInfoFromHostingClass (PluginInfo& info,
     info.name = classInfo.name ();
     info.vendor = classInfo.vendor ();
     info.version = classInfo.version ();
-    info.category = classInfo.category ();
-    info.subCategories = classInfo.subCategories ();
+    info.categories = classInfo.subCategories ();
     info.cid = classInfo.ID ().toString ();
     info.sdkVersion = classInfo.sdkVersion ();
     info.cardinality = classInfo.cardinality ();
@@ -832,19 +830,18 @@ void outputJSON (const std::vector<PluginInfo>& plugins, std::ostream& out)
             out << "      \"name\": \"" << escapeJSONString (plugin.name) << "\",\n";
             out << "      \"vendor\": \"" << escapeJSONString (plugin.vendor) << "\",\n";
             out << "      \"version\": \"" << escapeJSONString (plugin.version) << "\",\n";
-            out << "      \"category\": \"" << escapeJSONString (plugin.category) << "\",\n";
             out << "      \"cid\": \"" << escapeJSONString (plugin.cid) << "\",\n";
             out << "      \"sdkVersion\": \"" << escapeJSONString (plugin.sdkVersion)
                 << "\",\n";
             out << "      \"cardinality\": " << plugin.cardinality << ",\n";
             out << "      \"flags\": " << plugin.flags << ",\n";
 
-            out << "      \"subCategories\": [";
-            for (size_t j = 0; j < plugin.subCategories.size (); ++j)
+            out << "      \"categories\": [";
+            for (size_t j = 0; j < plugin.categories.size (); ++j)
             {
                 if (j > 0)
                     out << ", ";
-                out << "\"" << escapeJSONString (plugin.subCategories[j]) << "\"";
+                out << "\"" << escapeJSONString (plugin.categories[j]) << "\"";
             }
             out << "]\n";
         }
@@ -959,8 +956,23 @@ std::vector<PluginInfo> parseExistingJSON (const std::string& filename)
             currentPlugin.vendor = extractQuoted ("\"vendor\"");
         else if (trimmed.find ("\"version\"") == 0)
             currentPlugin.version = extractQuoted ("\"version\"");
-        else if (trimmed.find ("\"category\"") == 0)
-            currentPlugin.category = extractQuoted ("\"category\"");
+        else if (trimmed.find ("\"categories\"") == 0
+                 || trimmed.find ("\"subCategories\"") == 0)
+        {
+            currentPlugin.categories.clear ();
+            size_t pos = 0;
+            while ((pos = trimmed.find ('"', pos)) != std::string::npos)
+            {
+                size_t start = pos + 1;
+                size_t end = trimmed.find ('"', start);
+                if (end == std::string::npos)
+                    break;
+                std::string item = trimmed.substr (start, end - start);
+                if (item != "categories" && item != "subCategories")
+                    currentPlugin.categories.push_back (item);
+                pos = end + 1;
+            }
+        }
         else if (trimmed.find ("\"cid\"") == 0)
             currentPlugin.cid = extractQuoted ("\"cid\"");
         else if (trimmed.find ("\"sdkVersion\"") == 0)
