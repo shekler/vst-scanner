@@ -18,7 +18,7 @@ if ($Help) { Show-Usage; exit 0 }
 
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $BuildDir = Join-Path $ScriptDir "build"
-$TemplateDir = Join-Path $ScriptDir "vst_scanner_portable"
+$TemplateDir = Join-Path $ScriptDir "portable_template"
 
 Write-Status "Creating portable VST Scanner package..."
 
@@ -30,14 +30,14 @@ foreach ($rel in @("bin\Release\vst_scanner.exe", "bin\vst_scanner.exe")) {
 
 if (-not $scannerExe) {
     Write-Err "vst_scanner.exe not found. Build first:"
-    Write-Host "  cmake --build G:\vst-scanner\build --config Release" -ForegroundColor Yellow
+    Write-Host "  cmake --build build --config Release" -ForegroundColor Yellow
     exit 1
 }
 
 $templateFiles = @("scan_vst_simple.bat", "scan_vst_simple.ps1", "README.md")
 foreach ($f in $templateFiles) {
     if (-not (Test-Path (Join-Path $TemplateDir $f))) {
-        Write-Err "Missing template: vst_scanner_portable\$f"
+        Write-Err "Missing template: portable_template\$f"
         exit 1
     }
 }

@@ -93,11 +93,7 @@ After building the project, you can create a portable package for end users:
 .\distribute_vst_scanner.ps1 my_portable_package
 ```
 
-This creates a folder with:
-- `vst_scanner.exe` - The compiled scanner
-- `scan_vst_simple.bat` - Simple batch launcher
-- `scan_vst_simple.ps1` - PowerShell launcher
-- `README.md` - Usage instructions
+Copies `build\bin\Release\vst_scanner.exe` plus files from `portable_template/` into `vst_scanner_portable/` (gitignored).
 
 ## Troubleshooting
 

@@ -195,7 +195,7 @@ The scanner outputs a JSON file with the following structure:
 
 ## Supported Plugin Formats
 
-- **Windows**: `.vst3` files and folders
+- **Windows**: `.vst3` bundle folders and single-file `.vst3` modules (DLL)
 - **macOS**: `.vst3` bundles and `.bundle` files
 - **Linux**: `.vst3` files and `.so` libraries
 
@@ -206,7 +206,11 @@ The VST scanner supports the following command-line options:
 ### Basic Options
 - `-o <output_file.json>`: Output results to a specific file (default: stdout)
 - `-c <cumulative_file.json>`: Append to existing cumulative file
-- `-j <N>`: Parallel `moduleinfo.json` scans (DLL fallback stays sequential)
+- `--timeout <seconds>`: Per-plugin factory load timeout (default: 3)
+- `--try-license-load`: Load DLLs even when PACE/iLok wrappers detected (slow; default skips them)
+- `--no-isolate`: Load plugins in-process on Windows (risky with iLok/license dialogs)
+- `--no-factory`: List discovered `.vst3` paths only; never load plugin DLLs
+- Progress logs to console by default; use `-q` to silence
 - `-q`, `--quiet`: Summary only, no per-plugin lines
 - `-h`, `--help`: Show help message
 
@@ -314,6 +318,7 @@ Quick fixes:
 1. **Permission denied**: Make sure you have read access to the plugin directory
 2. **No plugins found**: Check that the directory contains VST3 plugins
 3. **Invalid plugins**: Some plugins may be corrupted or incompatible
+4. **License / headless-unsafe plugins**: PACE/iLok/license strings → `"missingLicense": true`. Plugins under an `iZotope` folder (e.g. Insight 2) are skipped without loading → `"failed": true`, `"scanSource": "skipped"`. Other plugins load via a hidden subprocess on Windows (3s timeout). Use `--try-license-load` to force load protected bundles. `--no-isolate` loads in the main process (dialogs may appear). Path-only inventory: `--no-factory`
 
 ### Platform-Specific Notes
 
@@ -344,7 +349,8 @@ vst-scanner/
 ├── CMakePresets.json        # Optional VS/Xcode/Ninja presets
 ├── scripts/init-sdk.sh      # Submodule init (v3.8.0)
 ├── scan_vst.sh / scan_vst.ps1   # Build + scan wrappers
-├── vst_scanner_portable/        # Launcher templates (exe via distribute script)
+├── portable_template/           # Launcher templates (source)
+├── vst_scanner_portable/        # Distribution output (generated, gitignored)
 ├── distribute_vst_scanner.ps1
 └── vst3sdk/                     # VST3 SDK 3.8.0 (git submodule)
 ```
