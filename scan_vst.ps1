@@ -150,34 +150,43 @@ try {
     exit 1
 }
 
-# Check if Visual Studio or MSBuild is available
+# Detect Visual Studio CMake generator (prefer newest installed)
 $msbuildPath = $null
-$cmakeGenerator = "Visual Studio 17 2022"
-
-# Try to find MSBuild
-$possiblePaths = @(
-    "${env:ProgramFiles}\Microsoft Visual Studio\2022\*\MSBuild\Current\Bin\MSBuild.exe",
-    "${env:ProgramFiles(x86)}\Microsoft Visual Studio\2022\*\MSBuild\Current\Bin\MSBuild.exe",
-    "${env:ProgramFiles}\Microsoft Visual Studio\2019\*\MSBuild\Current\Bin\MSBuild.exe",
-    "${env:ProgramFiles(x86)}\Microsoft Visual Studio\2019\*\MSBuild\Current\Bin\MSBuild.exe"
+$cmakeGenerator = $null
+$vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
+$generatorCandidates = @(
+    "Visual Studio 18 2026",
+    "Visual Studio 17 2022",
+    "Visual Studio 16 2019"
 )
+$availableGenerators = (cmake --help 2>$null) -join "`n"
 
-foreach ($path in $possiblePaths) {
-    $found = Get-ChildItem -Path $path -ErrorAction SilentlyContinue | Select-Object -First 1
-    if ($found) {
-        $msbuildPath = $found.FullName
+if (Test-Path $vswhere) {
+    $vsPath = & $vswhere -latest -property installationPath 2>$null
+    if ($vsPath) {
+        $msbuildPath = Join-Path $vsPath "MSBuild\Current\Bin\MSBuild.exe"
+        if (-not (Test-Path $msbuildPath)) { $msbuildPath = $null }
+    }
+}
+
+foreach ($candidate in $generatorCandidates) {
+    if ($availableGenerators -match [regex]::Escape($candidate)) {
+        $cmakeGenerator = $candidate
         break
     }
 }
 
-if (-not $msbuildPath) {
-    Write-Warning "MSBuild not found, trying alternative build methods..."
+if (-not $cmakeGenerator) {
+    Write-Warning "No Visual Studio CMake generator found, trying Unix Makefiles..."
     $cmakeGenerator = "Unix Makefiles"
 }
 
 # Configure and build
 Write-Status "Configuring project with CMake..."
 $cmakeArgs = @("-G", $cmakeGenerator, "-DCMAKE_BUILD_TYPE=Release", "..")
+if ($cmakeGenerator -like "Visual Studio*") {
+    $cmakeArgs = @("-G", $cmakeGenerator, "-A", "x64", "..")
+}
 
 $cmakeResult = & cmake @cmakeArgs 2>&1
 if ($LASTEXITCODE -ne 0) {

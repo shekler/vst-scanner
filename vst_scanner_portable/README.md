@@ -25,6 +25,7 @@ Scan a directory and save to specific file:
 `
 scan_vst_simple.bat "C:\Program Files\VSTPlugins" my_plugins.json
 `
+(uses `-o` internally)
 
 ## Output
 

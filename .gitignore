@@ -1,3 +1,10 @@
 /build
 /out
 .vs
+
+# Accidental in-source CMake configure (repo root)
+/CMakeCache.txt
+/CMakeFiles/
+
+# Local scan test output
+build/*.json

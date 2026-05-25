@@ -16,6 +16,13 @@
       }
     },
     {
+      "name": "vs2026",
+      "displayName": "Visual Studio 2026 x64",
+      "generator": "Visual Studio 18 2026",
+      "architecture": "x64",
+      "binaryDir": "${sourceDir}/build"
+    },
+    {
       "name": "vs2022",
       "displayName": "Visual Studio 2022 x64",
       "generator": "Visual Studio 17 2022",
@@ -37,6 +44,11 @@
     },
     {
       "name": "release-vs",
+      "configurePreset": "vs2026",
+      "configuration": "Release"
+    },
+    {
+      "name": "release-vs2022",
       "configurePreset": "vs2022",
       "configuration": "Release"
     },

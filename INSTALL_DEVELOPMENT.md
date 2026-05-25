@@ -2,16 +2,19 @@
 
 This guide explains how to set up the development environment to build the VST Scanner from source.
 
+See also [README.md](README.md) for usage, scan options, and quick start.
+
 ## Prerequisites
 
 ### Windows
 
-1. **Visual Studio 2019 or 2022** (Community edition is free)
+1. **Visual Studio 2019, 2022, or 2026 (v18)** (Community edition is free)
    - Download from: https://visualstudio.microsoft.com/downloads/
-   - During installation, make sure to include:
-     - MSVC v143 - VS 2022 C++ x64/x86 build tools
+   - Workload: **Desktop development with C++**
+   - Individual components:
+     - MSVC v143/v145 C++ x64/x86 build tools (latest)
      - Windows 10/11 SDK
-     - CMake tools for Visual Studio
+     - C++ CMake tools for Windows (optional if CMake on PATH)
 
 2. **CMake** (if not installed with Visual Studio)
    - Download from: https://cmake.org/download/
@@ -45,17 +48,38 @@ If you don't want the full Visual Studio IDE:
 
 ### Method 2: Manual CMake Build
 
+**Important:** never run `cmake` from the repo root (`G:\vst-scanner`). The VST SDK forbids in-source builds. Always use a separate `build` folder and pass `..` as the source path.
+
 ```powershell
-# Create build directory
-mkdir build
+cd G:\vst-scanner
+
+# If you accidentally configured in the repo root, delete:
+#   CMakeCache.txt, CMakeFiles\  (in G:\vst-scanner, not in build\)
+
+mkdir build -Force
 cd build
 
-# Configure with CMake
-cmake -G "Visual Studio 17 2022" -DCMAKE_BUILD_TYPE=Release ..
+# Configure (note the .. at the end — points to parent = project root)
+cmake -G "Visual Studio 18 2026" -A x64 ..
+# cmake -G "Visual Studio 17 2022" -A x64 ..
 
 # Build
 cmake --build . --config Release
 ```
+
+Output: `build\bin\Release\vst_scanner.exe`
+
+### Method 3: CMake one-liner (Windows)
+
+Works from any working directory — avoids `cd build` mistakes:
+
+```powershell
+.\scripts\init-sdk.ps1
+cmake -G "Visual Studio 18 2026" -A x64 -S G:\vst-scanner -B G:\vst-scanner\build
+cmake --build G:\vst-scanner\build --config Release
+```
+
+Replace `G:\vst-scanner` with your clone path. Use `Visual Studio 17 2022` if VS 2026 is not installed.
 
 ## Creating a Portable Distribution
 
@@ -76,6 +100,39 @@ This creates a folder with:
 - `README.md` - Usage instructions
 
 ## Troubleshooting
+
+### "In-source builds are not allowed"
+
+You ran `cmake` from `G:\vst-scanner` (repo root) without a separate build directory.
+
+```powershell
+cd G:\vst-scanner
+Remove-Item CMakeCache.txt, CMakeFiles -Recurse -Force -ErrorAction SilentlyContinue
+mkdir build -Force
+cd build
+cmake -G "Visual Studio 18 2026" -A x64 ..
+```
+
+The `..` is required — it tells CMake the source is the parent folder.
+
+### "cmake is not recognized"
+
+CMake is installed but the terminal was opened **before** install, so PATH is stale.
+
+**Quick fix (current session only):**
+```powershell
+$env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
+cmake --version
+```
+
+**Or use full path:**
+```powershell
+& "C:\Program Files\CMake\bin\cmake.exe" -G "Visual Studio 18 2026" -A x64 ..
+```
+
+**Permanent:** close and reopen the terminal (or restart Cursor), then `cmake` should work.
+
+**If still missing:** `winget install Kitware.CMake` and reopen terminal.
 
 ### "No CMAKE_C_COMPILER could be found"
 
@@ -117,12 +174,13 @@ If you encounter build errors:
 ## Verification
 
 After successful build, you should see:
-- `build/bin/vst_scanner.exe` (or similar path)
+- `build/bin/Release/vst_scanner.exe` (Visual Studio multi-config generator)
 - No error messages during build process
 
 You can then test the scanner:
 ```powershell
-.\build\bin\vst_scanner.exe "C:\path\to\vst\plugins" test_output.json
+.\scripts\init-sdk.ps1
+.\build\bin\Release\vst_scanner.exe "C:\path\to\vst\plugins" -o test_output.json
 ```
 
 ## Next Steps

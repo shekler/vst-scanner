@@ -16,7 +16,6 @@ set(VST3_SDK_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/vst3sdk)
 
 add_executable(vst_scanner
     vst_scanner.cpp
-    ${VST3_SDK_ROOT}/public.sdk/source/vst/moduleinfo/moduleinfocreator.cpp
     ${VST3_SDK_ROOT}/public.sdk/source/vst/moduleinfo/moduleinfoparser.cpp
 )
 

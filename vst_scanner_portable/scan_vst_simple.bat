@@ -32,7 +32,7 @@ echo Output file: %OUTPUT_FILE%
 
 echo.
 echo Scanning VST plugins...
-vst_scanner.exe "%~1" -o "%OUTPUT_FILE%"
+vst_scanner.exe "%~1" "%OUTPUT_FILE%"
 
 if %ERRORLEVEL% EQU 0 (
     echo.
