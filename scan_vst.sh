@@ -133,6 +133,11 @@ fi
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BUILD_DIR="$SCRIPT_DIR/build"
 
+# Ensure VST3 SDK submodule is initialized (v3.8.0)
+if [[ -x "$SCRIPT_DIR/scripts/init-sdk.sh" ]]; then
+    bash "$SCRIPT_DIR/scripts/init-sdk.sh"
+fi
+
 print_status "VST Scanner starting..."
 print_status "Directory to scan: $DIRECTORY"
 print_status "Output file: $OUTPUT_FILE"

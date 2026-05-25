@@ -94,6 +94,13 @@ if (-not $OutputFile -and -not $CumulativeFile) {
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $BuildDir = Join-Path $ScriptDir "build"
 
+# Ensure VST3 SDK submodule is initialized (v3.8.0)
+$InitSdk = Join-Path $ScriptDir "scripts\init-sdk.ps1"
+if (Test-Path $InitSdk) {
+    & $InitSdk
+    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+}
+
 Write-Status "VST Scanner starting..."
 Write-Status "Directory to scan: $Directory"
 if ($CumulativeFile) {

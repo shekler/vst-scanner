@@ -24,11 +24,27 @@ The VST scanner extracts the following information from each VST plugin:
 
 ### Prerequisites
 
-- **CMake** (version 3.25.0 or higher)
+- **Git** (for VST3 SDK submodule)
+- **CMake** 3.25.0+ ([download](https://cmake.org/download/) or `winget install Kitware.CMake`)
 - **C++ compiler**:
   - Windows: Visual Studio 2019/2022 or MinGW
   - macOS: Xcode Command Line Tools
-  - Linux: GCC 7+ or Clang 7+
+  - Linux: GCC 13+ or Clang 7+ (see [VST3 SDK requirements](https://steinbergmedia.github.io/vst3_dev_portal/pages/Getting+Started/How+to+setup+my+system.html))
+
+### VST3 SDK (submodule)
+
+This project uses the official [Steinberg VST3 SDK](https://github.com/steinbergmedia/vst3sdk) as a git submodule, pinned to **v3.8.0** (`v3.8.0_build_66`).
+
+```bash
+# Clone with SDK
+git clone --recursive git@github.com:shekler/vst-scanner.git
+cd vst-scanner
+
+# Or init SDK after clone
+git submodule update --init --recursive
+./scripts/init-sdk.sh   # Linux/macOS
+# .\scripts\init-sdk.ps1  # Windows
+```
 
 ### Optional
 
@@ -82,19 +98,19 @@ chmod +x scan_vst.sh
 ### Manual Build and Run
 
 ```bash
-# Create build directory
-mkdir build
-cd build
+./scripts/init-sdk.sh   # or .\scripts\init-sdk.ps1 on Windows
 
-# Configure with CMake
+mkdir build && cd build
 cmake -DCMAKE_BUILD_TYPE=Release ..
-
-# Build the project
 cmake --build . --config Release
 
-# Run the scanner
-./bin/vst_scanner /path/to/vst/plugins output.json
+# Run (use -o for file output)
+./bin/vst_scanner /path/to/vst/plugins -o output.json
 ```
+
+**CMake Presets** (optional): `cmake --preset vs2022` then `cmake --build --preset release-vs`
+
+**Windows CMake install:** `winget install Kitware.CMake`
 
 ## Output Format
 
@@ -228,9 +244,10 @@ done
 
 ### Build Issues
 
-1. **CMake not found**: Install CMake from https://cmake.org/download/
-2. **Compiler not found**: Install appropriate C++ compiler for your platform
-3. **VST3 SDK missing**: The SDK is included as a submodule in this project
+1. **CMake not found**: `winget install Kitware.CMake` or https://cmake.org/download/
+2. **Compiler not found**: Install Visual Studio 2022 (Windows) or Xcode CLT (macOS)
+3. **VST3 SDK missing / cmake modules missing**: Run `./scripts/init-sdk.sh` (initializes submodule + nested SDK deps)
+4. **Linux/macOS link errors for Module::create**: Ensure root `CMakeLists.txt` includes platform `module_*.cpp` (shipped in this repo)
 
 ### Runtime Issues
 
@@ -261,22 +278,19 @@ done
 
 ```
 vst-scanner/
-├── vst_scanner.cpp          # Main C++ source code
-├── CMakeLists.txt           # CMake build configuration
-├── scan_vst.sh              # Bash script for Linux/macOS
-├── scan_vst.ps1             # PowerShell script for Windows
-├── README.md                # This file
-└── vst3sdk/                 # VST3 SDK (submodule)
+├── vst_scanner.cpp          # Main C++ source
+├── CMakeLists.txt           # Build (links sdk_hosting + platform module loader)
+├── CMakePresets.json        # Optional VS/Xcode/Ninja presets
+├── scripts/init-sdk.sh      # Submodule init (v3.8.0)
+├── scan_vst.sh / scan_vst.ps1
+└── vst3sdk/                 # VST3 SDK 3.8.0 (git submodule)
 ```
 
 ### Building from Source
 
 ```bash
-# Clone the repository with submodules
-git clone --recursive https://github.com/your-repo/vst-scanner.git
+git clone --recursive git@github.com:shekler/vst-scanner.git
 cd vst-scanner
-
-# Build using the provided scripts
 ./scan_vst.sh /path/to/test/plugins --build-only
 ```
 
@@ -290,7 +304,7 @@ You can modify `vst_scanner.cpp` to:
 
 ## License
 
-This project uses the VST3 SDK which is licensed under the Steinberg VST3 License or GPL v3. See the VST3 SDK license files for details.
+This project uses the VST3 SDK (v3.8.0+), released under the [MIT license](https://github.com/steinbergmedia/vst3sdk/blob/master/LICENSE.txt). See `vst3sdk/LICENSE.txt` for details.
 
 ## Contributing
 

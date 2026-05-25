@@ -34,7 +34,7 @@ if (-not (Test-Path $ScannerExe)) {
 }
 
 Write-Host "Scanning VST plugins..." -ForegroundColor Blue
-$result = & $ScannerExe "$Directory" "$OutputFile" 2>&1
+$result = & $ScannerExe "$Directory" -o "$OutputFile" 2>&1
 
 if ($LASTEXITCODE -eq 0) {
     Write-Host "Scan completed successfully!" -ForegroundColor Green

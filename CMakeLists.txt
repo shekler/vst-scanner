@@ -1,87 +1,76 @@
 cmake_minimum_required(VERSION 3.25.0)
 
-# Set project name
 project(vst_scanner)
 
-# Set C++ standard
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-# VST3 SDK options - ensure hosting support is enabled
-set(SMTG_ENABLE_VST3_HOSTING_EXAMPLES ON CACHE BOOL "Enable VST 3 Hosting Examples" FORCE)
+# VST3 SDK options — scanner only needs hosting libs, not sample apps
+set(SMTG_ENABLE_VST3_HOSTING_EXAMPLES OFF CACHE BOOL "Enable VST 3 Hosting Examples" FORCE)
 set(SMTG_ENABLE_VST3_PLUGIN_EXAMPLES OFF CACHE BOOL "Enable VST 3 Plug-in Examples" FORCE)
 set(SMTG_ENABLE_VSTGUI_SUPPORT OFF CACHE BOOL "Enable VSTGUI Support" FORCE)
 
-# Include VST3 SDK
 add_subdirectory(vst3sdk)
 
-# Create executable with moduleinfo sources
-add_executable(vst_scanner 
+set(VST3_SDK_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/vst3sdk)
+
+add_executable(vst_scanner
     vst_scanner.cpp
-    vst3sdk/public.sdk/source/vst/moduleinfo/moduleinfocreator.cpp
-    vst3sdk/public.sdk/source/vst/moduleinfo/moduleinfocreator.h
-    vst3sdk/public.sdk/source/vst/moduleinfo/moduleinfoparser.cpp
-    vst3sdk/public.sdk/source/vst/moduleinfo/moduleinfoparser.h
-    vst3sdk/public.sdk/source/vst/moduleinfo/moduleinfo.h
-    vst3sdk/public.sdk/source/vst/moduleinfo/json.h
-    vst3sdk/public.sdk/source/vst/moduleinfo/jsoncxx.h
+    ${VST3_SDK_ROOT}/public.sdk/source/vst/moduleinfo/moduleinfocreator.cpp
+    ${VST3_SDK_ROOT}/public.sdk/source/vst/moduleinfo/moduleinfoparser.cpp
 )
 
-# Link against VST3 SDK libraries
-target_link_libraries(vst_scanner 
+target_compile_features(vst_scanner PUBLIC cxx_std_17)
+
+target_link_libraries(vst_scanner PRIVATE
     sdk_hosting
     sdk_common
     base
     pluginterfaces
 )
 
-# Include directories
 target_include_directories(vst_scanner PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}
-    ${CMAKE_CURRENT_SOURCE_DIR}/vst3sdk
+    ${VST3_SDK_ROOT}
 )
 
-# Platform-specific settings
-if(WIN32)
-    # Windows-specific settings
-    # set_target_properties(vst_scanner PROPERTIES
-    #     WIN32_EXECUTABLE TRUE
-    # )
-    
-    # Add Windows-specific module source
-    target_sources(vst_scanner PRIVATE vst3sdk/public.sdk/source/vst/hosting/module_win32.cpp)
-    # Windows-specific libraries
-    target_link_libraries(vst_scanner 
-        kernel32
-        user32
-        shell32
-        ole32
-        uuid
-        advapi32
-        oleaut32
+# Platform-specific Module::create implementation (required for hosting)
+if(APPLE)
+    target_sources(vst_scanner PRIVATE
+        ${VST3_SDK_ROOT}/public.sdk/source/vst/hosting/module_mac.mm
     )
-elseif(APPLE)
-    # macOS-specific settings
-    set_target_properties(vst_scanner PROPERTIES
-        MACOSX_BUNDLE TRUE
+    set_source_files_properties(
+        ${VST3_SDK_ROOT}/public.sdk/source/vst/hosting/module_mac.mm
+        PROPERTIES COMPILE_FLAGS "-fobjc-arc"
     )
-    
-    # macOS-specific frameworks
-    find_library(COREFOUNDATION_LIBRARY CoreFoundation)
-    find_library(CORESERVICES_LIBRARY CoreServices)
-    target_link_libraries(vst_scanner 
-        ${COREFOUNDATION_LIBRARY}
-        ${CORESERVICES_LIBRARY}
+    find_library(COREFOUNDATION_FRAMEWORK CoreFoundation)
+    find_library(CORESERVICES_FRAMEWORK CoreServices)
+    target_link_libraries(vst_scanner PRIVATE
+        ${COREFOUNDATION_FRAMEWORK}
+        ${CORESERVICES_FRAMEWORK}
     )
-elseif(UNIX)
-    # Linux-specific libraries
-    target_link_libraries(vst_scanner 
-        dl
-        pthread
+    if(NOT XCODE)
+        find_library(COCOA_FRAMEWORK Cocoa)
+        target_link_libraries(vst_scanner PRIVATE ${COCOA_FRAMEWORK})
+    endif()
+elseif(UNIX AND NOT APPLE)
+    target_sources(vst_scanner PRIVATE
+        ${VST3_SDK_ROOT}/public.sdk/source/vst/hosting/module_linux.cpp
+    )
+    target_link_libraries(vst_scanner PRIVATE dl pthread)
+elseif(WIN32)
+    target_sources(vst_scanner PRIVATE
+        ${VST3_SDK_ROOT}/public.sdk/source/vst/hosting/module_win32.cpp
+    )
+    target_link_libraries(vst_scanner PRIVATE
+        kernel32 user32 shell32 ole32 uuid advapi32 oleaut32
     )
 endif()
 
-# Set output directory
+if(MINGW)
+    set_target_properties(vst_scanner PROPERTIES LINK_FLAGS "-municode")
+endif()
+
 set_target_properties(vst_scanner PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin
-) 
+)
