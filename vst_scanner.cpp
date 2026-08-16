@@ -52,7 +52,7 @@ struct PluginInfo {
 //------------------------------------------------------------------------
 struct ScanOptions {
     bool quiet {false};
-    unsigned factoryLoadTimeoutSec {3};
+    unsigned factoryLoadTimeoutSec {5};
     unsigned protectedPluginTimeoutSec {2};
     bool skipFactoryLoad {false};
     bool fastLicenseSkip {true};
@@ -1025,7 +1025,7 @@ void printUsage (const char* argv0)
     std::cerr << "Options:" << std::endl;
     std::cerr << "  -o <output_file.json>     Output to file (default: stdout)" << std::endl;
     std::cerr << "  -c <cumulative_file.json> Append to existing cumulative file" << std::endl;
-    std::cerr << "  --timeout <seconds>       Per-plugin factory load timeout (default: 3)"
+    std::cerr << "  --timeout <seconds>       Per-plugin factory load timeout (default: 5)"
               << std::endl;
     std::cerr << "  --try-license-load        Attempt DLL load for PACE/iLok bundles (slower)"
               << std::endl;

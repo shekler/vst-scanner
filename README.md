@@ -205,7 +205,7 @@ The VST scanner supports the following command-line options:
 ### Basic Options
 - `-o <output_file.json>`: Output results to a specific file (default: stdout)
 - `-c <cumulative_file.json>`: Append to existing cumulative file
-- `--timeout <seconds>`: Per-plugin factory load timeout (default: 3)
+- `--timeout <seconds>`: Per-plugin factory load timeout (default: 5)
 - `--try-license-load`: Load DLLs even when PACE/iLok wrappers detected (slow; default skips them)
 - `--no-isolate`: Load plugins in-process on Windows (risky with iLok/license dialogs)
 - `--no-factory`: List discovered `.vst3` paths only; never load plugin DLLs
@@ -317,7 +317,7 @@ Quick fixes:
 1. **Permission denied**: Make sure you have read access to the plugin directory
 2. **No plugins found**: Check that the directory contains VST3 plugins
 3. **Invalid plugins**: Some plugins may be corrupted or incompatible
-4. **License / headless-unsafe plugins**: PACE/iLok/license strings → `"missingLicense": true`. Plugins under an `iZotope` folder (e.g. Insight 2) are skipped without loading → `"failed": true`, `"scanSource": "skipped"`. Other plugins load via a hidden subprocess on Windows (3s timeout). Use `--try-license-load` to force load protected bundles. `--no-isolate` loads in the main process (dialogs may appear). Path-only inventory: `--no-factory`
+4. **License / headless-unsafe plugins**: PACE/iLok/license strings → `"missingLicense": true`. Plugins under an `iZotope` folder (e.g. Insight 2) are skipped without loading → `"failed": true`, `"scanSource": "skipped"`. Other plugins load via a hidden subprocess on Windows (5s timeout). Use `--try-license-load` to force load protected bundles. `--no-isolate` loads in the main process (dialogs may appear). Path-only inventory: `--no-factory`
 
 ### Platform-Specific Notes
 
